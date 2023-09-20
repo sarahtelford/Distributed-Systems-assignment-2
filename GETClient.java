@@ -1,5 +1,8 @@
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.net.URI;
 
 public class GETClient extends WebSocketClient {
@@ -20,20 +23,23 @@ public class GETClient extends WebSocketClient {
         // Process and display the received message
         System.out.println("Received message: " + message);
 
-        // Split the JSON response and display attributes and values
-        String[] parts = message.split(",");
-        for (String part : parts) {
-            String[] keyValue = part.split(":");
-            if (keyValue.length == 2) {
-                String attribute = keyValue[0].trim();
-                String value = keyValue[1].trim();
-                System.out.println("Attribute: " + attribute);
+        try {
+            // Parse the received message as JSON
+            JSONObject jsonData = new JSONObject(message);
+
+            // Iterate through the JSON keys (attributes) and their corresponding values
+            for (String key : jsonData.keySet()) {
+                String value = jsonData.getString(key);
+                System.out.println("Attribute: " + key);
                 System.out.println("Value: " + value);
             }
-        }
 
-        // Increment Lamport clock after processing the message
-        lamportClock++;
+            // Increment Lamport clock after processing the message
+            lamportClock++;
+        } catch (JSONException e) {
+            // Handle JSON parsing error
+            System.err.println("Error parsing JSON: " + e.getMessage());
+        }
     }
 
     @Override
@@ -51,23 +57,29 @@ public class GETClient extends WebSocketClient {
             System.err.println("Usage: GETClient <websocket-server-url> [station-id]");
             return;
         }
-
+    
         String serverUrl = args[0];
         String stationId = (args.length > 1) ? args[1] : "default"; // Default station ID if not provided
-
+    
         try {
+            // Check if the provided URL starts with "http://" or "https://"
+            if (!serverUrl.startsWith("http://") && !serverUrl.startsWith("https://")) {
+                // If not, add "http://" as the default protocol
+                serverUrl = "http://" + serverUrl;
+            }
+    
             GETClient client = new GETClient(new URI(serverUrl));
             client.connect();
-
+    
             // Wait for the client to establish the connection
             while (!client.isOpen()) {
                 Thread.sleep(1000);
             }
-
+    
             // Send a GET request message to the server with station ID
             String getRequest = "GET /weather?station=" + stationId + " HTTP/1.1\r\n\r\n";
             client.send(getRequest);
-
+    
             // You can continue to send and receive WebSocket messages as needed
         } catch (Exception e) {
             e.printStackTrace();

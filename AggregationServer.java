@@ -12,12 +12,21 @@ public class AggregationServer extends WebSocketServer {
     private Map<WebSocket, Long> serverLastActiveTime = new ConcurrentHashMap<>();
     private static final int MAX_INACTIVE_TIME = 30000; // 30 seconds
 
+    private JSONObject jsonData = new JSONObject();
+
     public AggregationServer(InetSocketAddress address) {
         super(address);
     }
 
     public static void main(String[] args) {
-        int port = (args.length > 0) ? Integer.parseInt(args[0]) : 8888;
+        int port = 4567; // Default port number
+        if (args.length > 0) {
+            try {
+                port = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.err.println("Invalid port number provided. Using default port 4567.");
+            }
+        }
         AggregationServer server = new AggregationServer(new InetSocketAddress(port));
         server.start();
         System.out.println("Aggregation Server started on port " + port);
@@ -48,6 +57,7 @@ public class AggregationServer extends WebSocketServer {
             boolean dataIsValid = processData(message);
 
             if (dataIsValid) {
+                storeData(message); 
                 if (!serverLastActiveTime.containsKey(conn)) {
                     // This is the first data upload, send HTTP 201 Created response
                     String response201 = "HTTP/1.1 201 Created\r\n\r\nData received and stored.";
@@ -131,11 +141,33 @@ public class AggregationServer extends WebSocketServer {
         return lowerCaseMessage.startsWith("get") || lowerCaseMessage.startsWith("put");
     }
 
+    private void storeData(String data) {
+        // Store the data in your JSON storage
+        try {
+            JSONObject newData = new JSONObject(data);
+            String id = newData.getString("id");
+            jsonData.put(id, newData);
+        } catch (Exception e) {
+            // Handle JSON storage error
+            System.err.println("Error storing data: " + e.getMessage());
+        }
+    }
+
     @Override
     public void run() {
         // Periodically check for inactive content servers and remove them
         while (!Thread.interrupted()) {
             removeInactiveServers();
+            // Remove items from jsonData that haven't been communicated with for 30 seconds
+            long currentTime = System.currentTimeMillis();
+            for (String id : jsonData.keySet()) {
+                JSONObject data = jsonData.getJSONObject(id);
+                long lastActiveTime = data.optLong("lastActiveTime", 0);
+                if (currentTime - lastActiveTime > MAX_INACTIVE_TIME) {
+                    System.out.println("Removing inactive data for ID: " + id);
+                    jsonData.remove(id);
+                }
+            }
             try {
                 Thread.sleep(MAX_INACTIVE_TIME);
             } catch (InterruptedException e) {

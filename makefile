@@ -10,6 +10,9 @@ GET_CLIENT = GETClient
 CONTENT_SERVER = ContentServer
 AGGREGATION_SERVER = AggregationServer
 
+# Define the default port number
+DEFAULT_PORT = 4567
+
 all: compile
 
 compile:
@@ -24,7 +27,11 @@ run-content-server:
 	$(JAVA) $(JAVAC_OPTIONS) $(CONTENT_SERVER) ws://localhost:8888/ weather_data.txt
 
 run-aggregation-server:
-	$(JAVA) $(JAVAC_OPTIONS) $(AGGREGATION_SERVER)
+    @read -p "Enter port number (default is $(DEFAULT_PORT)): " port; \
+    if [ -z "$$port" ]; then \
+        port=$(DEFAULT_PORT); \
+    fi; \
+	$(JAVA) $(JAVAC_OPTIONS) $(AGGREGATION_SERVER) $$port
 
 clean:
 	rm -f $(GET_CLIENT).class
