@@ -2,6 +2,7 @@
     "java.project.referencedLibraries": [
         "lib/**/*.jar",
         "java_websocket.jar",
-        "Java-WebSocket-1.5.4.jar"
+        "Java-WebSocket-1.5.4.jar",
+        "json-20230618.jar"
     ]
 }
