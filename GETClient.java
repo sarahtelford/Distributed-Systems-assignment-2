@@ -7,23 +7,24 @@ public class GETClient {
         String host = clientUrl.split(":")[0];
         int port = Integer.parseInt(clientUrl.split(":")[1]);
 
-        System.out.println(host);
-        System.out.println(port);
+       try (Socket socket = new Socket(host, port);
+             DataOutputStream outputData = new DataOutputStream(socket.getOutputStream());
+             DataInputStream inputData = new DataInputStream(socket.getInputStream())) {
 
-        try {
-            Socket socket = new Socket(host, port);
+            // Create a PUT request with the data you want to send
+            String requestData = "GET /weather HTTP/1.1\r\n" + "Host: " + host + ":" + port + "\r\n" + "\r\n";
+            // Send the PUT request to the content server
+            outputData.writeUTF(requestData);
+            outputData.flush();
 
-            // Create an input stream to receive data from the server
-            DataInputStream inputFromServer = new DataInputStream(socket.getInputStream());
+            StringBuilder responseBuilder = new StringBuilder();
+            String line;
+            while ((line = inputData.readLine()) != null) {
+                responseBuilder.append(line).append("\n");
+            }
 
-            // Read the response from the server
-            String serverResponse = inputFromServer.readUTF();
-            
-            // Print the response received from the server
+            String serverResponse = responseBuilder.toString();
             System.out.println("Server Response:\n" + serverResponse);
-
-            // Close the socket
-            socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }

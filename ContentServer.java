@@ -61,6 +61,7 @@ public class ContentServer
             outputData.writeUTF("PUT /weather_data.txt HTTP/1.1\r\nUser-Agent: // ATOMClient/1/0\r\nContent-Type: text/Json\r\nContent-Length: " + finalJsonData.length() + "\r\nLamport-Clock: " + lamportClock + "\r\n" + finalJsonData);
             outputData.flush();
 
+
             String serverResponse = inputData.readUTF();
             System.out.println("Server Response: " + serverResponse);
 

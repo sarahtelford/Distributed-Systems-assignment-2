@@ -23,99 +23,71 @@ public class AggregationServer
             System.out.println("Aggregation Server started on port " + port);
 
             while (true) {
+                // Accept incoming client connections
                 Socket clientSocket = socket.accept();
                 System.out.println("Received connection from client: " + clientSocket.getRemoteSocketAddress());
 
-                // Create a new thread to handle the client connection
+                // Create a new thread to handle each client connection
                 Thread clientHandlerThread = new Thread(() -> handleClient(clientSocket));
                 clientHandlerThread.start();
-
-                // if (isServerConnection(clientSocket)) {
-                //     Thread serverHandlerThread = new Thread(() -> handleServer(clientSocket));
-                //     serverHandlerThread.start();
-                // }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-        // try{
-        //     ServerSocket socket = new ServerSocket(port);
-        //     Socket s = socket.accept();
+    private static void handleClient(Socket clientSocket) {
+        try (
+            DataInputStream inputData = new DataInputStream(clientSocket.getInputStream());
+            DataOutputStream outputData = new DataOutputStream(clientSocket.getOutputStream())
+        ) {
+            String message = inputData.readUTF();
+            System.out.println("Received message from content client: " + message);
 
-        //     DataInputStream inputData = new DataInputStream(s.getInputStream());
-        //     DataOutputStream  outputData = new DataOutputStream(s.getOutputStream());
+            // Check if the received message is a valid GET or PUT request
+            if (isGetOrPutRequest(message)) {
+                // Process the received data and determine the outcome
+                boolean dataIsValid = processData(message);
 
-        //     String message = (String)inputData.readUTF();
-    
-        //     System.out.println("Aggregation Server started on port "+ port);
+                // if (dataIsValid) {
+                    storeData(message);
+                    // if (!serverLastActiveTime.containsKey(s)) {
+                        outputData.writeUTF("HTTP/1.1 201 Created\r\n\r\nData received and stored.");
+                        outputData.flush();
+                    // } else {
+                    //     outputData.writeUTF("HTTP/1.1 200 OK\r\n\r\nData received and processed successfully.");
+                    //     outputData.flush();
+                    // }
 
-        //     System.out.println("Received message from content server: " + message);
+                        // Create a new output stream for the client
+                    DataOutputStream ResponseOutputData = new DataOutputStream(clientSocket.getOutputStream());
 
-        //     // Check if the received message is a valid GET or PUT request
-        //     if (isGetOrPutRequest(message)) {
-        //         // Process the received data and determine the outcome
-        //         boolean dataIsValid = processData(message);
+                    ResponseOutputData.writeUTF(message);
+                    ResponseOutputData.flush();
 
-        //         // if (dataIsValid) {
-        //             storeData(message);
-        //             if (!serverLastActiveTime.containsKey(s)) {
-        //                 outputData.writeUTF("HTTP/1.1 201 Created\r\n\r\nData received and stored.");
-        //                 outputData.flush();
-        //             } else {
-        //                 outputData.writeUTF("HTTP/1.1 200 OK\r\n\r\nData received and processed successfully.");
-        //                 outputData.flush();
-        //             }
-
-        //                 // Create a new output stream for the client
-        //             DataOutputStream clientOutputData = new DataOutputStream(s.getOutputStream());
-
-        //             clientOutputData.writeUTF(message);
-        //             clientOutputData.flush();
-
-        //         // } else if (message.isEmpty()) {
-        //         //     // No data received, send HTTP 204 No Content response
-        //         //     outputData.writeUTF("HTTP/1.1 204 No Content\r\n\r\nNo data received.");
-        //         //     outputData.flush();
+                // } else if (message.isEmpty()) {
+                //     // No data received, send HTTP 204 No Content response
+                //     outputData.writeUTF("HTTP/1.1 204 No Content\r\n\r\nNo data received.");
+                //     outputData.flush();
                     
-        //         // } else {
-        //         //     // Invalid data or JSON parsing error, send HTTP 500 Internal Server Error response
-        //         //     outputData.writeUTF("HTTP/1.1 500 Internal Server Error\r\n\r\nInternal server error occurred.");
-        //         //     outputData.flush(); 
-        //         // }
-        //         // serverLastAcftiveTime.put(conn, System.currentTimeMillis());
-        //     } else {
-        //         // Request is not a valid GET or PUT, send HTTP 400 Bad Request response
-        //         outputData.writeUTF("HTTP/1.1 400 Bad Request\r\n\r\nInvalid request received.");
-        //         outputData.flush(); 
-        //     }
-        //     socket.close();
-        // }
-        //     catch(
-        //     IOException e){e.printStackTrace();
-        //     }
-        // }
-
-
-        private static void handleClient(Socket clientSocket) {
-            try (
-                DataInputStream inputData = new DataInputStream(clientSocket.getInputStream());
-                DataOutputStream outputData = new DataOutputStream(clientSocket.getOutputStream())
-            ) {
-                String message = inputData.readUTF();
-                System.out.println("Received message from client: " + message);
-    
-                // Handle client request here (similar to previous code)
-                outputData.writeUTF(message);
-                outputData.flush();
-        
-    
-                clientSocket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+                // } else {
+                //     // Invalid data or JSON parsing error, send HTTP 500 Internal Server Error response
+                //     outputData.writeUTF("HTTP/1.1 500 Internal Server Error\r\n\r\nInternal server error occurred.");
+                //     outputData.flush(); 
+                // }
+                // serverLastAcftiveTime.put(conn, System.currentTimeMillis());
+            } else {
+                // Request is not a valid GET or PUT, send HTTP 400 Bad Request response
+                outputData.writeUTF("HTTP/1.1 400 Bad Request\r\n\r\nInvalid request received.");
+                outputData.flush(); 
             }
+
+            clientSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+    }
+
 
         // public static void removeInactiveServers() {
         //     long currentTime = System.currentTimeMillis();

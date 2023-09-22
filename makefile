@@ -27,7 +27,7 @@ run-content-server:
 	$(JAVA) $(JAVAC_OPTIONS) $(CONTENT_SERVER) localhost:4567 ./weather_data.txt
 
 run-aggregation-server:
-	$(JAVA) $(JAVAC_OPTIONS) $(AGGREGATION_SERVER) 
+	$(JAVA) $(JAVAC_OPTIONS) $(AGGREGATION_SERVER) 4567
 
 clean:
 	rm -f $(GET_CLIENT).class
