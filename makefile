@@ -21,17 +21,13 @@ compile:
 	$(JAVAC) $(JAVAC_OPTIONS) $(AGGREGATION_SERVER).java
 
 run-get-client:
-	$(JAVA) $(JAVAC_OPTIONS) $(GET_CLIENT) ws://localhost:8887/
+	$(JAVA) $(JAVAC_OPTIONS) $(GET_CLIENT) localhost:4567
 
 run-content-server:
-	$(JAVA) $(JAVAC_OPTIONS) $(CONTENT_SERVER) ws://localhost:8888/ weather_data.txt
+	$(JAVA) $(JAVAC_OPTIONS) $(CONTENT_SERVER) localhost:4567 ./weather_data.txt
 
 run-aggregation-server:
-    @read -p "Enter port number (default is $(DEFAULT_PORT)): " port; \
-    if [ -z "$$port" ]; then \
-        port=$(DEFAULT_PORT); \
-    fi; \
-	$(JAVA) $(JAVAC_OPTIONS) $(AGGREGATION_SERVER) $$port
+	$(JAVA) $(JAVAC_OPTIONS) $(AGGREGATION_SERVER) 
 
 clean:
 	rm -f $(GET_CLIENT).class
