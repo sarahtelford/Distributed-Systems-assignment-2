@@ -1,16 +1,17 @@
-// A Java program for a Server
 import java.net.*;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.io.*;
 import org.json.JSONObject;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
-public class AggregationServer
-{
+public class AggregationServer {
+    private static Map<Socket, String> serverIds = new ConcurrentHashMap<>();
     private static Map<Socket, Long> serverLastActiveTime = new ConcurrentHashMap<>();
-    private static final int MAX_INACTIVE_TIME = 30000; 
-	public static void main(String args[])
-	{
+
+    public static void main(String args[]) {
         int port;
 
         if (args.length != 0) {
@@ -27,8 +28,12 @@ public class AggregationServer
                 Socket clientSocket = socket.accept();
                 System.out.println("Received connection from client: " + clientSocket.getRemoteSocketAddress());
 
+                // Generate a unique ID for the server
+                String serverId = generateUniqueId();
+                serverIds.put(clientSocket, serverId); // Store the server ID
+      
                 // Create a new thread to handle each client connection
-                Thread clientHandlerThread = new Thread(() -> handleClient(clientSocket));
+                Thread clientHandlerThread = new Thread(() -> handleClient(clientSocket, serverId));
                 clientHandlerThread.start();
             }
         } catch (IOException e) {
@@ -36,7 +41,7 @@ public class AggregationServer
         }
     }
 
-    private static void handleClient(Socket clientSocket) {
+    public static void handleClient(Socket clientSocket, String serverId) {
         try (
             DataInputStream inputData = new DataInputStream(clientSocket.getInputStream());
             DataOutputStream outputData = new DataOutputStream(clientSocket.getOutputStream())
@@ -44,115 +49,95 @@ public class AggregationServer
             String message = inputData.readUTF();
             System.out.println("Received message from content client: " + message);
 
-            // Check if the received message is a valid GET or PUT request
-            if (isGetOrPutRequest(message)) {
-                // Process the received data and determine the outcome
-                boolean dataIsValid = processData(message);
+            StringBuilder jsonDataBuilder = new StringBuilder();
+            boolean parsingSuccessful = processData(message, jsonDataBuilder);
 
-                // if (dataIsValid) {
-                    storeData(message);
-                    // if (!serverLastActiveTime.containsKey(s)) {
+            if (parsingSuccessful) {
+                // Parsing was successful, jsonDataBuilder now contains the JSON data
+                String jsonData = jsonDataBuilder.toString();
+                System.out.println("JSON Data: " + jsonData);
+        
+                boolean dataIsValid = true; 
+
+                // Process the received data and determine the outcome
+                if (dataIsValid) {
+                    storeData(message, serverId);
+                    if (!serverLastActiveTime.containsKey(clientSocket)) {
                         outputData.writeUTF("HTTP/1.1 201 Created\r\n\r\nData received and stored.");
                         outputData.flush();
-                    // } else {
-                    //     outputData.writeUTF("HTTP/1.1 200 OK\r\n\r\nData received and processed successfully.");
-                    //     outputData.flush();
-                    // }
+                    } else {
+                        outputData.writeUTF("HTTP/1.1 200 OK\r\n\r\nData received and processed successfully.");
+                        outputData.flush();
+                    }
 
-                        // Create a new output stream for the client
+                    // Create a new output stream for the client
                     DataOutputStream ResponseOutputData = new DataOutputStream(clientSocket.getOutputStream());
 
                     ResponseOutputData.writeUTF(message);
                     ResponseOutputData.flush();
-
-                // } else if (message.isEmpty()) {
-                //     // No data received, send HTTP 204 No Content response
-                //     outputData.writeUTF("HTTP/1.1 204 No Content\r\n\r\nNo data received.");
-                //     outputData.flush();
+                } else if (message.isEmpty()) {
+                    // No data received, send HTTP 204 No Content response
+                    outputData.writeUTF("HTTP/1.1 204 No Content\r\n\r\nNo data received.");
+                    outputData.flush();
                     
-                // } else {
-                //     // Invalid data or JSON parsing error, send HTTP 500 Internal Server Error response
-                //     outputData.writeUTF("HTTP/1.1 500 Internal Server Error\r\n\r\nInternal server error occurred.");
-                //     outputData.flush(); 
-                // }
-                // serverLastAcftiveTime.put(conn, System.currentTimeMillis());
+                } else {
+                    // Invalid data or JSON parsing error, send HTTP 500 Internal Server Error response
+                    outputData.writeUTF("HTTP/1.1 500 Internal Server Error\r\n\r\nInternal server error occurred.");
+                    outputData.flush(); 
+                }
+                serverLastActiveTime.put(clientSocket, System.currentTimeMillis());
             } else {
                 // Request is not a valid GET or PUT, send HTTP 400 Bad Request response
                 outputData.writeUTF("HTTP/1.1 400 Bad Request\r\n\r\nInvalid request received.");
                 outputData.flush(); 
             }
-
             clientSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        }catch(IOException e)
+    {
+        e.printStackTrace();
+    }
+}
+
+    // Generate a unique ID using UUID
+    public static String generateUniqueId() {
+        return UUID.randomUUID().toString();
+    }
+
+    /**
+     * Process the received data from a content server and 
+     * extract the JSON data from the message.
+     *
+     * @param data The data received in JSON format.
+     * @return true if the data is valid, false otherwise.
+     */
+    public static boolean processData(String data, StringBuilder jsonDataBuilder) {
+        try {
+            // Find the start of JSON data after "Lamport-Clock:"
+            int jsonStartIndex = data.indexOf("{", data.indexOf("Lamport-Clock:"));
+            if (jsonStartIndex == -1) {
+                return false;
+            }
+    
+            String jsonData = data.substring(jsonStartIndex);
+            JSONObject jsonObject = new JSONObject(jsonData);
+            jsonDataBuilder.append(jsonObject.toString());
+    
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
-
-        // public static void removeInactiveServers() {
-        //     long currentTime = System.currentTimeMillis();
-        //     for (Socket conn : serverLastActiveTime.keySet()) {
-        //         long lastActiveTime = serverLastActiveTime.get(conn);
-        //         if (currentTime - lastActiveTime > MAX_INACTIVE_TIME) {
-        //             System.out.println("Removing inactive content server: " + conn.getRemoteSocketAddress());
-        //             serverLastActiveTime.remove(conn);
-        //             conn.close();
-        //         }
-        //         catch(IOException e){e.printStackTrace();
-        //         }
-              
-        //     }
-        // }
-    
-        /**
-         * Process the received data from a content server.
-         *
-         * @param data The data received in JSON format.
-         * @return true if the data is valid, false otherwise.
-         */
-        public static boolean processData(String data) {
-            try {
-                // Parse the received data as JSON
-                JSONObject jsonData = new JSONObject(data);
-    
-                // Check if the JSON object contains the required fields
-                if (jsonData.has("id") && jsonData.has("air_temp") && jsonData.has("wind_spd_kt")) {
-                    // Data is valid
-                    return true;
-                } else {
-                    // Data is missing required fields
-                    return false;
-                }
-            } catch (Exception e) {
-                // JSON parsing or other exception occurred, data is invalid
-                return false;
-            }
+    public static void storeData(String data, String serverId) {
+        // Store the data in a file with a unique filename based on the server ID and timestamp
+        try {
+            String fileName = serverId + "_" + System.currentTimeMillis() + ".json";
+            FileWriter fileWriter = new FileWriter(fileName);
+            fileWriter.write(data);
+            fileWriter.close();
+        } catch (IOException e) {
+            // Handle file I/O error
+            System.err.println("Error storing data: " + e.getMessage());
         }
-    
-        /**
-         * Checks if the given message represents a valid GET or PUT request.
-         *
-         * @param message The message to be checked.
-         * @return True if the message is a valid GET or PUT request, otherwise false.
-         */
-        public static boolean isGetOrPutRequest(String message) {
-            // Convert the message to lowercase for case-insensitive comparison
-            String lowerCaseMessage = message.toLowerCase();
-    
-            // Check if the message starts with "get" or "put"
-            return lowerCaseMessage.startsWith("get") || lowerCaseMessage.startsWith("put");
-        }
-    
-        public static void storeData(String data) {
-            // Store the data in your JSON storage
-            try {
-                JSONObject newData = new JSONObject(data);
-                String id = newData.getString("id");
-                // jsonData.put(id, newData);
-            } catch (Exception e) {
-                // Handle JSON storage error
-                System.err.println("Error storing data: " + e.getMessage());
-            }
-        }
-	}
-
+    }
+}
