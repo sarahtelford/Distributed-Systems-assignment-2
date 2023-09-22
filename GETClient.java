@@ -19,9 +19,9 @@ public class GETClient {
 
             StringBuilder responseBuilder = new StringBuilder();
             String line;
-            while ((line = inputData.readLine()) != null) {
-                responseBuilder.append(line).append("\n");
-            }
+            // while ((line = inputData.readLine()) != null) {
+            //     responseBuilder.append(line).append("\n");
+            // }
 
             String serverResponse = responseBuilder.toString();
             System.out.println("Server Response:\n" + serverResponse);

@@ -1,6 +1,6 @@
 # Define the Java compiler and options
 JAVAC = javac
-JAVAC_OPTIONS = -cp .json-20230618.jar
+JAVAC_OPTIONS = -cp .:json-20230618.jar
 
 # Define the Java interpreter
 JAVA = java
