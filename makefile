@@ -9,6 +9,7 @@ JAVA = java
 GET_CLIENT = GETClient
 CONTENT_SERVER = ContentServer
 AGGREGATION_SERVER = AggregationServer
+LAMPORT_CLOCK = LamportClock
 
 # Define the default port number
 DEFAULT_PORT = 4567
@@ -33,3 +34,4 @@ clean:
 	rm -f $(GET_CLIENT).class
 	rm -f $(CONTENT_SERVER).class
 	rm -f $(AGGREGATION_SERVER).class
+	rm -f $(LAMPORT_CLOCK).class
