@@ -1,65 +1,92 @@
-# Distributed-Systems-assignment-2
-Sarah Telford : a1810750
-# Java Client and Servers Makefile
+# Distributed Systems Assignment 2
+**Student:** Sarah Telford (a1810750)
 
+## Content Server
+The Content Server is responsible for sending weather data to another server over a socket connection. It reads weather data from a feed file, converts it to JSON format, and sends it to the destination server using HTTP PUT requests. The class handles retries in case of connection failures and keeps track of the last active time for each socket.
+
+### Key Features
+- Converts weather data from a feed file into JSON format.
+- Retries sending data to the server in case of failures.
+- Responds with appropriate HTTP status codes based on the success or failure of data transmission.
+
+## Aggregation Server
+The Aggregation Server acts as a server for receiving data from multiple content servers, processing requests, and managing client connections. It is designed to aggregate and manage weather data provided by content servers.
+
+### Key Features
+- Collects weather data from various sources for centraliszed management.
+- Handles incoming client connections concurrently, ensuring data integrity.
+- Organises and stores weather data in the data/ directory.
+- Automatically removes outdated data (data from old sockets/data not recived in the last 20 messages) to maintain data accuracy.
+- Processes GET and PUT requests, facilitating data retrieval and submission.
+- Provides detailed error responses and status codes.
+
+## GET Client
+The GETClient is a client application for retrieving weather data from the aggregation server. It sends HTTP GET requests and processes the server's responses. The GET Client will only return weather data that has been recved in the last 30 seconds. If no data has been recived in this timeframe a 
+
+```
+HTTP/1.1 404 Not Found
+
+No weather data available.
+```
+
+will be returned. 
+
+### Key Features
+- Sends a HTTP GET requests to a content server, allowing the retrieval of weather data stored on the server.
+- Implements a heartbeat mechanism to maintain the connection with the server. 
+- Uses a Lamport clock to timestamp its requests to ensure that requests are ordered correctly
+- The client processes and formats the server's responses for easier readability.
+
+# Using the Makefile
 The Makefile simplifies the compilation and execution of client and server programs. It provides targets for compiling the Java source code and running the client and server programs.
 
-## Prerequisites
+### Prerequisites
+- Java Development Kit (JDK) installed.
+- JSON library (json-20230618.jar) available in a 'lib' directory in your project folder.
 
-- Java Development Kit (JDK): Make sure you have a Java Development Kit (JDK) installed on your system.
+#### Compile Java Code
+- To compile the Java code, run the following command:
+  ```
+  make compile
+  ```
 
-## Usage
+  This will compile the main Java classes using the `javac` command. The classes to be compiled are specified in the `compile` target.
 
-### Compilation
+#### Run GET Client
+- Commands should be run in its own terminal to independently control the client's interactions with the server.
+- To run the GETClient program, use the following command:
+  ```
+  make run-get-client URL=<URL>
+  ```
 
-To compile the Java source code, use the `compile` target. This target will compile the following main classes:
+  Replace `<URL>` with the URL you want to use when running the GETClient. Example:
+  ```
+  make run-get-client URL=http://example.com:8080/data
+#### Run Content Server
+- Commands should be run in its own terminal.
+- To run the ContentServer program, use the following command:
+  ```
+  make run-content-server URL=<URL> LOCATION=<LOCATION>
+  ```
 
-- `GETClient.java`: The WebSocket client for making GET requests.
-- `ContentServer.java`: The WebSocket server for serving content.
-- `AggregationServer.java`: The WebSocket server for aggregating content.
+  Replace `<URL>` with the URL and port number you want to use when running the ContentServer. Replace `<LOCATION>` with the location of your data file. Example:
+  ```
+  make run-content-server URL=localhost:4567 LOCATION=./data/weather_data.txt
+#### Run Aggregation Server
+- - Commands should be run in its own terminal.
+- To run the AggregationServer program, use the following command:
+  ```
+  make run-aggregation-server PORT=<PORT>
+  ```
 
-To compile the code, open your terminal and navigate to the directory containing the Makefile and source code files. Then, run:
+  Replace `<PORT>` with the port number you want to use when running the AggregationServer. Example:
+  ```
+  make run-aggregation-server PORT=4567
+### Clean Compiled Files
+- To clean up the compiled class files, you can run:
+  ```
+  make clean
+  ```
 
-```bash
-make compile
-```
-
-This will compile the Java source files using the specified options and generate the corresponding `.class` files.
-
-### Running the GET Client
-
-To run the WebSocket GET client, use the `run-get-client` target. This client will make GET requests to a WebSocket server. You can provide the server URL and, optionally, a station ID as command-line arguments. The server URL should be in the format "http://servername:portnumber".
-
-Example usage:
-
-```bash
-make run-get-client
-```
-
-### Running the Content Server
-
-To run the WebSocket Content Server, use the `run-content-server` target. This server serves content over a WebSocket connection.
-
-Example usage:
-
-```bash
-make run-content-server
-```
-
-### Running the Aggregation Server
-
-To run the WebSocket Aggregation Server, use the `run-aggregation-server` target. This server aggregates content received from multiple WebSocket clients.
-
-Example usage:
-
-```bash
-make run-aggregation-server
-```
-
-### Cleaning Up
-
-To remove the generated `.class` files, use the `clean` target.
-
-```bash
-make clean
-```
+# Other notes
+Tried to implement heartbeat from GETclient but was having an issue that the aggregation server was hanging when a heartbeat was sent. I have left the code related code in the client and aggregation server, but it is never utilised. 

@@ -1,123 +1,111 @@
-import org.junit.Before;
+import static org.junit.Assert.*;
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.Test;
-import org.java_websocket.handshake.ServerHandshake;
+import org.mockito.Mockito;
 
 public class GETClientTest {
 
-    private ServerHandshake mockHandshake;
+    private static final int PORT = 12345;
+    private static final String HOST = "localhost:" + PORT;
+    
+    @Test
+    public void testSendGetRequest() {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        DataOutputStream outputData = new DataOutputStream(outputStream);
 
-    @Before
-    public void setUp() throws Exception {
-        // Initialize any objects or mocks needed for testing
-        mockHandshake = new MockServerHandshake(); // Create a mock ServerHandshake implementation
+        LamportClock lamportClock = new LamportClock();
+
+        String host = "example.com";
+        int port = 80;
+
+        try {
+            GETClient.sendGetRequest(outputData, host, port, lamportClock);
+            String expectedRequest = "GET /weather HTTP/1.1\r\n" +
+                    "Host: example.com:80\r\n" +
+                    "Lamport-Clock: 0\r\n\r\n";
+            assertEquals(expectedRequest, outputStream.toString());
+        } catch (Exception e) {
+            fail("Exception thrown: " + e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testProcessServerResponse() {
+        String testResponse = "{'id':'123','name':'TestCity','temp':'25.5'}";
+        BufferedReader inputReader = new BufferedReader(new StringReader(testResponse));
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        System.setOut(new PrintStream(outputStream));
+
+        try {
+            GETClient.processServerResponse(inputReader);
+
+            String expectedOutput = "Server Response:\n{'id':'123',\n'name':'TestCity',\n'temp':'25.5'}";
+            assertEquals(expectedOutput, outputStream.toString().trim());
+        } catch (Exception e) {
+            fail("Exception thrown: " + e.getMessage());
+        } finally {
+            System.setOut(System.out);
+        }
     }
 
     @Test
-    public void testOnOpen() {
-        // Create a GETClient instance
-        GETClient client = new GETClient(null);
-
-        // Call onOpen with a mock ServerHandshake
-        client.onOpen(mockHandshake);
-
-        // Add assertions as needed
-        // For example, you can verify that a message was printed to the console
-    }
-
-    @Test
-    public void testOnMessage() {
-        // Create a GETClient instance
-        GETClient client = new GETClient(null);
-
-        // Define a JSON message for testing
-        String jsonMessage = "{\"attribute1\": \"value1\", \"attribute2\": \"value2\"}";
-
-        // Call onMessage with the JSON message
-        client.onMessage(jsonMessage);
-
-        // Add assertions as needed
-        // For example, you can verify that the expected attributes and values were printed to the console
-    }
-
-    @Test
-    public void testOnMessageWithInvalidJSON() {
-        // Create a GETClient instance
-        GETClient client = new GETClient(null);
-
-        // Define an invalid JSON message (missing closing curly brace)
-        String invalidJsonMessage = "{\"attribute1\": \"value1\", \"attribute2\": \"value2\"";
-
-        // Call onMessage with the invalid JSON message
-        client.onMessage(invalidJsonMessage);
-
-        // Add assertions as needed
-        // For example, you can verify that an error message was printed to the error console
-    }
-
-    @Test
-    public void testOnClose() {
-        // Create a GETClient instance
-        GETClient client = new GETClient(null);
-
-        // Call onClose with mock parameters
-        client.onClose(1000, "Reason", true);
-
-        // Add assertions as needed
-        // For example, you can verify that a message indicating the WebSocket closure was printed to the console
-    }
-
-    @Test
-    public void testOnError() {
-        // Create a GETClient instance
-        GETClient client = new GETClient(null);
-
-        // Create a mock exception (use a custom Exception class or a real Exception)
-        Exception mockException = new Exception("Test error message");
-
-        // Call onError with the mock exception
-        client.onError(mockException);
-
-        // Add assertions as needed
-        // For example, you can verify that an error message was printed to the error console
-    }
-
-    // You can add more tests as needed to cover other scenarios or edge cases.
-
-    // Define a simple mock implementation of ServerHandshake for testing
-    private static class MockServerHandshake implements ServerHandshake {
-        @Override
-        public short getHttpStatus() {
-            return 0;
-        }
-
-        @Override
-        public String getHttpStatusMessage() {
-            return null;
-        }
-
-        @Override
-        public String getFieldValue(String name) {
-            return null;
-        }
-
-        @Override
-        public boolean hasFieldValue(String name) {
-            return false;
-        }
-
-        @Override
-        public Iterator<String> iterateHttpFields() {
-            return null;
-        }
-
-        @Override
-        public void put(String name, String value) {
-
-        }
-
-        @Override
-        public void iterateHttpFields(Consumer<String> action) {
-
+    public void testMainMethod() {
+        // Set up a mock socket for the client
+        Socket socket = Mockito.mock(Socket.class);
+        DataOutputStream mockOutput = Mockito.mock(DataOutputStream.class);
+    
+        try {
+            Mockito.when(socket.getOutputStream()).thenReturn(mockOutput);
+    
+            // Use a CountDownLatch to control the test timing
+            CountDownLatch serverStarted = new CountDownLatch(1);
+            Thread serverThread = new Thread(() -> {
+                try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+                    serverStarted.countDown();
+                    Socket clientSocket = serverSocket.accept();
+    
+                    // Simulate the server's response
+                    try (DataInputStream input = new DataInputStream(clientSocket.getInputStream())) {
+                        String clientRequest = input.readUTF();
+                        if (clientRequest.contains("GET /weather")) {
+                            // Send an HTTP response
+                            try (DataOutputStream outputData = new DataOutputStream(clientSocket.getOutputStream())) {
+                                String httpResponse = "HTTP/1.1 200 OK\r\n" +
+                                                    "Content-Length: 5\r\n";
+                                outputData.writeUTF(httpResponse);
+                            }
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+            serverThread.start();
+    
+            serverStarted.await(5, TimeUnit.SECONDS);
+    
+            // Redirect the standard output to capture the response
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            System.setOut(new PrintStream(outputStream));
+    
+            GETClient.main(new String[]{HOST});
+    
+            String expectedOutput = "HTTP/1.1 200 OK\r\nContent-Length: 5";
+            assertEquals(expectedOutput, outputStream.toString().trim());
+    
+            // Reset the standard output
+            System.setOut(System.out);
+        } catch (Exception e) {
+            fail("Exception thrown: " + e.getMessage());
         }
     }
+    
 }
