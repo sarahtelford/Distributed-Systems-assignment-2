@@ -88,8 +88,8 @@ public class AggregationServerTest {
 
         // Assert that the response was written to the mockOutputData stream
         String response = mockOutputData.toString();
-        assertTrue(response.contains("HTTP/1.1 201 Created"));
-        assertTrue(response.contains("Data received and stored."));
+        String expectedOutput = "HTTP/1.1 201 Created\r\n\r\nData received and stored.";
+        assertEquals(expectedOutput, response);
     }
 
     // Test handling of an invalid client request
@@ -104,10 +104,10 @@ public class AggregationServerTest {
 
         AggregationServer.handleClient(mockSocket, "TestServer");
 
-        // Assert that the response indicates an invalid request
         String response = mockOutputData.toString();
-        assertTrue(response.contains("HTTP/1.1 400 Bad Request"));
-        assertTrue(response.contains("Invalid request received."));
+        String expectedOutput = "HTTP/1.1 400 Bad Request\r\n\r\nInvalid request received.";
+         // Assert that the response indicates an invalid request
+        assertEquals(expectedOutput, response);
     }
 
     // Method to read the contents of a file

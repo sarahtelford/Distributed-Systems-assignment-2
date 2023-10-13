@@ -9,6 +9,10 @@ import org.mockito.MockitoAnnotations;
 
 public class ContentServerTest {
 
+    private static final String MOCK_SERVER_URL = "mockserver:8080";
+    private static final String VALID_FEED_FILE_PATH = "validFeed.txt";
+    private static final String INVALID_FEED_FILE_PATH = "invalidFeed.txt";
+    
     @Mock
     private LamportClock lamportClock;
 
@@ -34,6 +38,14 @@ public class ContentServerTest {
 
         assertTrue(ContentServer.sendDataToServer("example.com:80", tempFile.getAbsolutePath(), lamportClock));
     }
+
+
+    @Test
+    public void testSendDataToServer_Success() {
+        boolean success = ContentServer.sendDataToServer(MOCK_SERVER_URL, VALID_FEED_FILE_PATH, new LamportClock());
+        assertTrue(success);
+    }
+
 
     @Test
     public void testSendDataToServerFailure() throws IOException {

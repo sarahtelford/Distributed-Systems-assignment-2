@@ -89,4 +89,8 @@ The Makefile simplifies the compilation and execution of client and server progr
   ```
 
 # Other notes
-Tried to implement heartbeat from GETclient but was having an issue that the aggregation server was hanging when a heartbeat was sent. I have left the code related code in the client and aggregation server, but it is never utilised. 
+- Tried to implement heartbeat from GETclient but was having an issue that the aggregation server was hanging when a heartbeat was sent. I have left the code related code in the client and aggregation server, but it is never utilised. 
+
+- I was having some issues with the testing and mocking the connections. I really did try!
+  
+- The 3rd test on the GETclient is getting the exact expected result but for whatever reson it is reuring as not equal (even through the output is exactly the same)
